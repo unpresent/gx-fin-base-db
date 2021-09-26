@@ -1,0 +1,70 @@
+service:
+  name: base-db
+
+# Логирование
+logging:
+  level:
+    org:
+      springframework: info
+      springframework.orm: info
+      springframework.web: info
+      hibernate:
+        sql: debug
+        hql: debug
+        type: trace
+        type.descriptor: info
+        pretty: info
+        cache: info
+        jdbc: debug
+
+# Настройки Сервера
+server:
+  port: 7003
+
+# provider
+worker:
+  wait_on_stop_ms: 6000
+  wait_on_restart_ms: 30000
+  min_time_per_iteration_ms: 5000
+  timeout_life_ms: 45000
+
+#kafka
+kafka:
+  server: localhost:9092
+  group_id: base-db
+  duration_on_poll_ms : 200
+  income_topic:
+    securities: baseSecuritiesRequests
+    derivatives: baseDerivativesRequests
+  outcome_topic:
+    places: basePlaces
+    provider_types: baseProviderTypes
+    providers: baseProviders
+    instrument_types: baseInstrumentTypes
+    currencies: baseCurrencies
+    securities: baseSecurities
+    derivatives: baseDerivatives
+
+#data
+spring:
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQL95Dialect
+    show-sql: false
+    hibernate:
+      show_sql: true
+      use_sql_comments: true
+      fomat_sql: true
+      cahce:
+        use_query_cache: true
+      ddl-auto: validate # create, create-drop, update, validate
+      naming:
+        physical-strategy: ru.gxfin.common.data.naming.PhysicalNamingStrategyQuotedImpl
+
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gxfin_base
+    username: gxfin
+    password: 12033021
+    driverClassName: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 2

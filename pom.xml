@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>ru.gxfin.core</groupId>
+    <artifactId>gxfin-base-db</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0</version>
+
+    <properties>
+        <java.version>11</java.version>
+        <encoding>UTF-8</encoding>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+
+        <gxfin-common-starter.version>1.0</gxfin-common-starter.version>
+        <gxfin-common-jpa-starter.version>1.0</gxfin-common-jpa-starter.version>
+        <gxfin-common-kafka-starter.version>1.0</gxfin-common-kafka-starter.version>
+        <!-- gxfin-core-data.version>1.0</gxfin-core-data.version -->
+
+        <org.springframework.boot.version>2.5.1</org.springframework.boot.version>
+        <org.springframework.kafka.version>2.7.0</org.springframework.kafka.version>
+        <org.testcontainers.version>1.15.3</org.testcontainers.version>
+
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+        <maven-resource-plugin.version>3.2.0</maven-resource-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${org.springframework.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ru.gxfin.common</groupId>
+            <artifactId>gxfin-common-starter</artifactId>
+            <version>${gxfin-common-starter.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ru.gxfin.common</groupId>
+            <artifactId>gxfin-common-jpa-starter</artifactId>
+            <version>${gxfin-common-jpa-starter.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ru.gxfin.common</groupId>
+            <artifactId>gxfin-common-kafka-starter</artifactId>
+            <version>${gxfin-common-kafka-starter.version}</version>
+        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>ru.gxfin.core</groupId>-->
+        <!--            <artifactId>gxfin-core-data</artifactId>-->
+        <!--            <version>${gxfin-core-data.version}</version>-->
+        <!--        </dependency>-->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${encoding}</encoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>${maven-resource-plugin.version}</version>
+                <configuration>
+                    <encoding>${encoding}</encoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${org.springframework.boot.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>
