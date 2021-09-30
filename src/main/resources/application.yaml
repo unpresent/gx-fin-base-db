@@ -1,5 +1,14 @@
 service:
   name: base-db
+  simple-worker.enabled: true
+  simple-kafka-income-offsets-controller.enabled: true
+
+# base-db
+base-db:
+  wait_on_stop_ms: 6000
+  wait_on_restarts_ms: 30000
+  min_time_per_iteration_ms: 5000
+  timeout_runner_life_ms: 45000
 
 # Логирование
 logging:
@@ -20,13 +29,6 @@ logging:
 # Настройки Сервера
 server:
   port: 7003
-
-# provider
-worker:
-  wait_on_stop_ms: 6000
-  wait_on_restart_ms: 30000
-  min_time_per_iteration_ms: 5000
-  timeout_life_ms: 45000
 
 #kafka
 kafka:
@@ -58,13 +60,13 @@ spring:
         use_query_cache: true
       ddl-auto: validate # create, create-drop, update, validate
       naming:
-        physical-strategy: ru.gxfin.common.data.naming.PhysicalNamingStrategyQuotedImpl
+        physical-strategy: ru.gx.data.jpa.naming.PhysicalNamingStrategyQuotedImpl
 
 
   datasource:
     url: jdbc:postgresql://localhost:5432/gxfin_base
     username: gxfin
     password: 12033021
-    driverClassName: org.postgresql.Driver
+    # driverClassName: org.postgresql.Driver
     hikari:
       maximum-pool-size: 2
