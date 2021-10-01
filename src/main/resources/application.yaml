@@ -1,7 +1,15 @@
 service:
   name: base-db
   simple-worker.enabled: true
-  simple-kafka-income-offsets-controller.enabled: true
+  income-topics:
+    simple-loader.enabled: true
+    configurator-caller.enabled: true
+    simple-offsets-controller.enabled: true
+  outcome-topics:
+    simple-uploader.enabled: true # TODO: Как убрать это свойство?!
+  outcome-entities:
+    simple-uploader.enabled: true
+    configurator-caller.enabled: true
 
 # base-db
 base-db:
