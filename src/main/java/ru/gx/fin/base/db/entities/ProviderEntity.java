@@ -8,7 +8,7 @@ import lombok.experimental.Accessors;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
-import ru.gx.data.jpa.AbstractEntityObject;
+import ru.gx.data.AbstractEntityObject;
 
 import javax.persistence.*;
 

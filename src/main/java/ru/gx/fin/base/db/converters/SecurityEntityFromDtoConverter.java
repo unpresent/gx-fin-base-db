@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.gx.fin.base.db.entities.SecurityEntitiesPackage;
 import ru.gx.fin.base.db.entities.SecurityEntity;
 import ru.gx.fin.base.db.repository.SecuritiesRepository;
-import ru.gx.data.jpa.AbstractEntityFromDtoConverter;
+import ru.gx.data.AbstractEntityFromDtoConverter;
 import ru.gx.fin.base.db.repository.InstrumentTypesRepository;
 import ru.gx.fin.base.db.dto.Security;
 

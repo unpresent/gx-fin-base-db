@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.gx.fin.base.db.repository.PlacesRepository;
 import ru.gx.fin.base.db.repository.ProviderTypesRepository;
 import ru.gx.fin.base.db.repository.ProvidersRepository;
-import ru.gx.data.jpa.AbstractEntityFromDtoConverter;
+import ru.gx.data.AbstractEntityFromDtoConverter;
 import ru.gx.fin.base.db.entities.ProviderEntitiesPackage;
 import ru.gx.fin.base.db.entities.ProviderEntity;
 import ru.gx.fin.base.db.dto.Provider;

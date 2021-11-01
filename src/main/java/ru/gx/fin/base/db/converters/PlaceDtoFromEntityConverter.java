@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.gx.fin.base.db.dto.PlacesPackage;
 import ru.gx.fin.base.db.entities.PlaceEntity;
 import ru.gx.fin.base.db.memdata.PlacesMemoryRepository;
-import ru.gx.data.jpa.AbstractDtoFromEntityConverter;
+import ru.gx.data.AbstractDtoFromEntityConverter;
 import ru.gx.fin.base.db.dto.Place;
 
 import java.util.Objects;

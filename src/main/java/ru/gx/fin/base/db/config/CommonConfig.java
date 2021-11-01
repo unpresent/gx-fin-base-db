@@ -28,10 +28,10 @@ import ru.gx.fin.base.db.events.LoadedSecuritiesEvent;
 import ru.gx.fin.base.db.memdata.*;
 import ru.gx.fin.base.db.repository.*;
 import ru.gx.kafka.TopicMessageMode;
-import ru.gx.kafka.load.IncomeTopicsConfiguration;
-import ru.gx.kafka.load.IncomeTopicsConfigurator;
-import ru.gx.kafka.load.LoadingMode;
+import ru.gx.kafka.load.*;
 import ru.gx.kafka.upload.OutcomeTopicUploadingDescriptorsDefaults;
+import ru.gx.kafka.upload.OutcomeTopicsConfiguration;
+import ru.gx.kafka.upload.OutcomeTopicsConfigurator;
 import ru.gx.std.upload.EntitiesUploader;
 import ru.gx.std.upload.EntitiesUploaderConfigurator;
 
@@ -42,7 +42,7 @@ import static lombok.AccessLevel.PROTECTED;
 
 @EnableJpaRepositories("ru.gx.fin.base.db.repository")
 @EntityScan({"ru.gx.fin.base.db.entities"})
-public abstract class CommonConfig implements IncomeTopicsConfigurator, EntitiesUploaderConfigurator {
+public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeTopicsConfigurator {
     // -----------------------------------------------------------------------------------------------------------------
     // <editor-fold desc="Common">
     @Value("${service.name}")
@@ -127,17 +127,17 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, Entities
     // -----------------------------------------------------------------------------------------------------------------
     // <editor-fold desc="Worker & Settings">
     @Bean
-    public DbControllerSettingsContainer DbControllerSettingsController() {
+    public DbControllerSettingsContainer dbControllerSettingsContainer() {
         return new DbControllerSettingsContainer();
     }
 
     @Bean
-    public DbController DbController() {
+    public DbController dbController() {
         return new DbController();
     }
 
     @Bean
-    public DbControllerLifeController DbControllerLifeController() {
+    public DbControllerLifeController dbControllerLifeController() {
         return new DbControllerLifeController();
     }
 
@@ -286,35 +286,35 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, Entities
     // </editor-fold>
     // -----------------------------------------------------------------------------------------------------------------
     // <editor-fold desc="Kafka Consumers">
-    public Properties consumerProperties() {
-        final var props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaGroupId);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        return props;
+    public void putConsumerProperties(Properties properties) {
+        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer);
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaGroupId);
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
     }
 
     @Override
     public void configureIncomeTopics(@NotNull IncomeTopicsConfiguration incomeTopicsConfiguration) {
-        final var defaults = incomeTopicsConfiguration.getDescriptorsDefaults();
-        incomeTopicsConfiguration.getDescriptorsDefaults()
-                .setTopicMessageMode(TopicMessageMode.OBJECT)
+        final var defaults = incomeTopicsConfiguration
+                .getDescriptorsDefaults()
+                .setTopicMessageMode(TopicMessageMode.PACKAGE)
                 .setLoadingMode(LoadingMode.Auto)
-                .setConsumerProperties(consumerProperties())
                 .setPartitions(0);
+        putConsumerProperties(defaults.getConsumerProperties());
 
         incomeTopicsConfiguration
-                .register(
-                        new SecuritiesLoadingDescriptor(settings.getIncomeTopicSecurities(), defaults)
-                                .setPriority(0)
-                                .setOnLoadedEventClass(LoadedSecuritiesEvent.class)
-                )
-                .register(
-                        new DerivativesLoadingDescriptor(settings.getIncomeTopicDerivatives(), defaults)
-                                .setPriority(1)
-                                .setOnLoadedEventClass(LoadedDerivativesEvent.class)
-                );
+                .newDescriptor(this.settings.getIncomeTopicSecurities(), SecuritiesLoadingDescriptor.class)
+                .setOnLoadedEventClass(LoadedSecuritiesEvent.class)
+                .setPriority(0)
+                .init();
+
+        incomeTopicsConfiguration
+                .newDescriptor(this.settings.getIncomeTopicDerivatives(), DerivativesLoadingDescriptor.class)
+                .setOnLoadedEventClass(LoadedDerivativesEvent.class)
+                .setPriority(1)
+                .init();
+
     }
     // </editor-fold>
     // -----------------------------------------------------------------------------------------------------------------
@@ -326,6 +326,15 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, Entities
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         return new KafkaProducer<>(props);
+    }
+
+    @Override
+    public void configureOutcomeTopics(@NotNull OutcomeTopicsConfiguration outcomeTopicsConfiguration) {
+        final var defaults = outcomeTopicsConfiguration
+                .getDescriptorsDefaults()
+                .setTopicMessageMode(TopicMessageMode.OBJECT);
+
+        // TODO: ...
     }
 
     @Override

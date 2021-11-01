@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.gx.fin.base.db.entities.CurrencyEntitiesPackage;
 import ru.gx.fin.base.db.dto.Currency;
 import ru.gx.fin.base.db.repository.CurrenciesRepository;
-import ru.gx.data.jpa.AbstractEntityFromDtoConverter;
+import ru.gx.data.AbstractEntityFromDtoConverter;
 import ru.gx.fin.base.db.entities.CurrencyEntity;
 import ru.gx.fin.base.db.repository.InstrumentTypesRepository;
 

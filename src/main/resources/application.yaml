@@ -14,7 +14,7 @@ service:
 # base-db
 base-db:
   wait_on_stop_ms: 6000
-  wait_on_restarts_ms: 30000
+  wait_on_restart_ms: 30000
   min_time_per_iteration_ms: 5000
   timeout_runner_life_ms: 45000
 
@@ -68,7 +68,7 @@ spring:
         use_query_cache: true
       ddl-auto: validate # create, create-drop, update, validate
       naming:
-        physical-strategy: ru.gx.data.jpa.naming.PhysicalNamingStrategyQuotedImpl
+        physical-strategy: ru.gx.data.naming.PhysicalNamingStrategyQuotedImpl
 
 
   datasource:

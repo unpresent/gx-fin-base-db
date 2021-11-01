@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
-import ru.gx.data.jpa.AbstractEntityObject;
+import ru.gx.data.AbstractEntityObject;
 
 import javax.persistence.*;
 

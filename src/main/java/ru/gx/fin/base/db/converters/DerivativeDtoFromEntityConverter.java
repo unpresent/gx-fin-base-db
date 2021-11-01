@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import ru.gx.data.jpa.AbstractDtoFromEntityConverter;
+import ru.gx.data.AbstractDtoFromEntityConverter;
 import ru.gx.fin.base.db.dto.AbstractInstrument;
 import ru.gx.fin.base.db.dto.DerivativesPackage;
 import ru.gx.fin.base.db.dto.InstrumentCode;

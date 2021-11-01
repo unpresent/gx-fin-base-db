@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.gx.fin.base.db.entities.InstrumentTypeEntitiesPackage;
 import ru.gx.fin.base.db.entities.InstrumentTypeEntity;
-import ru.gx.data.jpa.AbstractEntityFromDtoConverter;
+import ru.gx.data.AbstractEntityFromDtoConverter;
 import ru.gx.fin.base.db.repository.InstrumentTypesRepository;
 import ru.gx.fin.base.db.dto.InstrumentType;
 
