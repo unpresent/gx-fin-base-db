@@ -15,25 +15,30 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.core.KafkaAdmin;
+import ru.gx.data.edlinking.EntitiesDtoLinksConfigurator;
+import ru.gx.data.edlinking.EntitiesDtosLinksConfiguration;
 import ru.gx.fin.base.db.converters.*;
 import ru.gx.fin.base.db.dbcontroller.DbController;
-import ru.gx.fin.base.db.dbcontroller.DbControllerLifeController;
 import ru.gx.fin.base.db.dbcontroller.DbControllerSettingsContainer;
-import ru.gx.fin.base.db.descriptors.*;
+import ru.gx.fin.base.db.dto.*;
+import ru.gx.fin.base.db.entities.*;
 import ru.gx.fin.base.db.events.LoadedDerivativesEvent;
 import ru.gx.fin.base.db.events.LoadedSecuritiesEvent;
 import ru.gx.fin.base.db.memdata.*;
 import ru.gx.fin.base.db.repository.*;
+import ru.gx.kafka.SerializeMode;
 import ru.gx.kafka.TopicMessageMode;
-import ru.gx.kafka.load.*;
-import ru.gx.kafka.upload.OutcomeTopicUploadingDescriptorsDefaults;
+import ru.gx.kafka.load.IncomeTopicsConfiguration;
+import ru.gx.kafka.load.IncomeTopicsConfigurator;
+import ru.gx.kafka.load.LoadingMode;
+import ru.gx.kafka.load.StandardIncomeTopicLoadingDescriptor;
 import ru.gx.kafka.upload.OutcomeTopicsConfiguration;
 import ru.gx.kafka.upload.OutcomeTopicsConfigurator;
-import ru.gx.std.upload.EntitiesUploader;
-import ru.gx.std.upload.EntitiesUploaderConfigurator;
+import ru.gx.kafka.upload.StandardOutcomeTopicUploadingDescriptor;
 
 import java.util.HashMap;
 import java.util.Properties;
@@ -42,7 +47,8 @@ import static lombok.AccessLevel.PROTECTED;
 
 @EnableJpaRepositories("ru.gx.fin.base.db.repository")
 @EntityScan({"ru.gx.fin.base.db.entities"})
-public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeTopicsConfigurator {
+@EnableConfigurationProperties(ConfigurationPropertiesKafka.class)
+public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeTopicsConfigurator, EntitiesDtoLinksConfigurator {
     // -----------------------------------------------------------------------------------------------------------------
     // <editor-fold desc="Common">
     @Value("${service.name}")
@@ -50,9 +56,6 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeT
 
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private DbControllerSettingsContainer settings;
-
-    @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private KafkaProducer<Long, String> producer;
 
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private PlaceDtoFromEntityConverter placeDtoFromEntityConverter;
@@ -73,7 +76,13 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeT
     private SecurityDtoFromEntityConverter securityDtoFromEntityConverter;
 
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
+    private SecurityEntityFromDtoConverter securityEntityFromDtoConverter;
+
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private DerivativeDtoFromEntityConverter derivativeDtoFromEntityConverter;
+
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
+    private DerivativeEntityFromDtoConverter derivativeEntityFromDtoConverter;
 
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private PlacesRepository placesRepository;
@@ -134,11 +143,6 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeT
     @Bean
     public DbController dbController() {
         return new DbController();
-    }
-
-    @Bean
-    public DbControllerLifeController dbControllerLifeController() {
-        return new DbControllerLifeController();
     }
 
     // </editor-fold>
@@ -273,9 +277,6 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeT
     @Value(value = "${kafka.server}")
     private String kafkaServer;
 
-    @Value("${kafka.group_id}")
-    private String kafkaGroupId;
-
     @Bean
     public KafkaAdmin kafkaAdmin() {
         final var configs = new HashMap<String, Object>();
@@ -286,107 +287,159 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeT
     // </editor-fold>
     // -----------------------------------------------------------------------------------------------------------------
     // <editor-fold desc="Kafka Consumers">
-    public void putConsumerProperties(Properties properties) {
+    private Properties consumerProperties() {
+        final var properties = new Properties();
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer);
-        properties.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaGroupId);
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, this.serviceName);
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        return properties;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void configureIncomeTopics(@NotNull IncomeTopicsConfiguration incomeTopicsConfiguration) {
-        final var defaults = incomeTopicsConfiguration
-                .getDescriptorsDefaults()
-                .setTopicMessageMode(TopicMessageMode.PACKAGE)
+        incomeTopicsConfiguration.getDescriptorsDefaults()
+                .setTopicMessageMode(TopicMessageMode.Package)
                 .setLoadingMode(LoadingMode.Auto)
-                .setPartitions(0);
-        putConsumerProperties(defaults.getConsumerProperties());
+                .setPartitions(0)
+                .setConsumerProperties(consumerProperties());
 
         incomeTopicsConfiguration
-                .newDescriptor(this.settings.getIncomeTopicSecurities(), SecuritiesLoadingDescriptor.class)
+                .newDescriptor(this.settings.getIncomeTopicSecurities(), StandardIncomeTopicLoadingDescriptor.class)
+                .setDataObjectClass(Security.class)
+                .setDataPackageClass(SecuritiesPackage.class)
                 .setOnLoadedEventClass(LoadedSecuritiesEvent.class)
                 .setPriority(0)
                 .init();
 
         incomeTopicsConfiguration
-                .newDescriptor(this.settings.getIncomeTopicDerivatives(), DerivativesLoadingDescriptor.class)
+                .newDescriptor(this.settings.getIncomeTopicDerivatives(), StandardIncomeTopicLoadingDescriptor.class)
+                .setDataObjectClass(Derivative.class)
+                .setDataPackageClass(DerivativesPackage.class)
                 .setOnLoadedEventClass(LoadedDerivativesEvent.class)
                 .setPriority(1)
                 .init();
 
     }
+
     // </editor-fold>
     // -----------------------------------------------------------------------------------------------------------------
     // <editor-fold desc="Uploading">
-    @Bean
-    public KafkaProducer<Long, String> producer() {
+    private Properties producerProperties() {
         final var props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        return new KafkaProducer<>(props);
+        return props;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void configureOutcomeTopics(@NotNull OutcomeTopicsConfiguration configuration) {
+        configuration.getDescriptorsDefaults()
+                .setSerializeMode(SerializeMode.String)
+                .setTopicMessageMode(TopicMessageMode.Object)
+                .setProducerProperties(producerProperties());
+
+        configuration
+                .newDescriptor(settings.getOutcomeTopicPlaces(), StandardOutcomeTopicUploadingDescriptor.class)
+                .setDataObjectClass(Place.class)
+                .setDataPackageClass(PlacesPackage.class)
+                .setMemoryRepository(this.placesMemoryRepository)
+                .init();
+        configuration
+                .newDescriptor(settings.getOutcomeTopicProviderTypes(), StandardOutcomeTopicUploadingDescriptor.class)
+                .setDataObjectClass(ProviderType.class)
+                .setDataPackageClass(ProviderTypesPackage.class)
+                .setMemoryRepository(this.providerTypesMemoryRepository)
+                .init();
+        configuration
+                .newDescriptor(settings.getOutcomeTopicProviders(), StandardOutcomeTopicUploadingDescriptor.class)
+                .setDataObjectClass(Provider.class)
+                .setDataPackageClass(ProvidersPackage.class)
+                .setMemoryRepository(this.providersMemoryRepository)
+                .init();
+        configuration
+                .newDescriptor(settings.getOutcomeTopicInstrumentTypes(), StandardOutcomeTopicUploadingDescriptor.class)
+                .setDataObjectClass(InstrumentType.class)
+                .setDataPackageClass(InstrumentTypesPackage.class)
+                .setMemoryRepository(this.instrumentTypesMemoryRepository)
+                .init();
+        configuration
+                .newDescriptor(settings.getOutcomeTopicCurrencies(), StandardOutcomeTopicUploadingDescriptor.class)
+                .setDataObjectClass(Currency.class)
+                .setDataPackageClass(CurrenciesPackage.class)
+                .setMemoryRepository(this.currenciesMemoryRepository)
+                .init();
+        configuration
+                .newDescriptor(settings.getOutcomeTopicSecurities(), StandardOutcomeTopicUploadingDescriptor.class)
+                .setDataObjectClass(Security.class)
+                .setDataPackageClass(SecuritiesPackage.class)
+                .setMemoryRepository(this.securitiesMemoryRepository)
+                .init();
+        configuration
+                .newDescriptor(settings.getIncomeTopicDerivatives(), StandardOutcomeTopicUploadingDescriptor.class)
+                .setDataObjectClass(Derivative.class)
+                .setDataPackageClass(DerivativesPackage.class)
+                .setMemoryRepository(this.derivativesMemoryRepository)
+                .init();
     }
 
     @Override
-    public void configureOutcomeTopics(@NotNull OutcomeTopicsConfiguration outcomeTopicsConfiguration) {
-        final var defaults = outcomeTopicsConfiguration
-                .getDescriptorsDefaults()
-                .setTopicMessageMode(TopicMessageMode.OBJECT);
-
-        // TODO: ...
-    }
-
-    @Override
-    public void configureEntitiesUploader(@NotNull EntitiesUploader entitiesUploader) {
-        final var defaults = new OutcomeTopicUploadingDescriptorsDefaults()
-                .setTopicMessageMode(TopicMessageMode.OBJECT)
-                .setProducer(producer);
-
-        entitiesUploader
-                .register(
-                        new PlacesUploadingDescriptor(settings.getOutcomeTopicPlaces(), defaults)
-                                .setConverter(placeDtoFromEntityConverter)
-                                .setRepository(placesRepository)
-                                .setMemoryRepository(placesMemoryRepository)
-                )
-                .register(
-                        new ProviderTypesUploadingDescriptor(settings.getOutcomeTopicProviderTypes(), defaults)
-                                .setConverter(providerTypeDtoFromEntityConverter)
-                                .setRepository(providerTypesRepository)
-                                .setMemoryRepository(providerTypesMemoryRepository)
-                )
-                .register(
-                        new ProvidersUploadingDescriptor(settings.getOutcomeTopicProviders(), defaults)
-                                .setConverter(providerDtoFromEntityConverter)
-                                .setRepository(providersRepository)
-                                .setMemoryRepository(providersMemoryRepository)
-                )
-                .register(
-                        new InstrumentTypesUploadingDescriptor(settings.getOutcomeTopicInstrumentTypes(), defaults)
-                                .setConverter(instrumentTypeDtoFromEntityConverter)
-                                .setRepository(instrumentTypesRepository)
-                                .setMemoryRepository(instrumentTypesMemoryRepository)
-                )
-                .register(
-                        new CurrenciesUploadingDescriptor(settings.getOutcomeTopicCurrencies(), defaults)
-                                .setConverter(currencyDtoFromEntityConverter)
-                                .setRepository(currenciesRepository)
-                                .setMemoryRepository(currenciesMemoryRepository)
-                )
-                .register(
-                        new SecuritiesUploadingDescriptor(settings.getOutcomeTopicSecurities(), defaults)
-                                .setConverter(securityDtoFromEntityConverter)
-                                .setRepository(securitiesRepository)
-                                .setMemoryRepository(securitiesMemoryRepository)
-                )
-                .register(
-                        new DerivativesUploadingDescriptor(settings.getOutcomeTopicDerivatives(), defaults)
-                                .setConverter(derivativeDtoFromEntityConverter)
-                                .setRepository(derivativesRepository)
-                                .setMemoryRepository(derivativesMemoryRepository)
-                );
-
+    public void configureLinks(@NotNull EntitiesDtosLinksConfiguration configuration) {
+        configuration
+                .<PlaceEntity, PlaceEntitiesPackage, Short, Place, PlacesPackage>
+                        newDescriptor(PlaceEntity.class, Place.class)
+                .setDtoPackageClass(PlacesPackage.class)
+                .setRepository(this.placesRepository)
+                .setMemoryRepository(this.placesMemoryRepository)
+                .setDtoFromEntityConverter(this.placeDtoFromEntityConverter);
+        configuration
+                .<ProviderTypeEntity, ProviderTypeEntitiesPackage, Short, ProviderType, ProviderTypesPackage>
+                        newDescriptor(ProviderTypeEntity.class, ProviderType.class)
+                .setDtoPackageClass(ProviderTypesPackage.class)
+                .setRepository(this.providerTypesRepository)
+                .setMemoryRepository(this.providerTypesMemoryRepository)
+                .setDtoFromEntityConverter(this.providerTypeDtoFromEntityConverter);
+        configuration
+                .<ProviderEntity, ProviderEntitiesPackage, Short, Provider, ProvidersPackage>
+                        newDescriptor(ProviderEntity.class, Provider.class)
+                .setDtoPackageClass(ProvidersPackage.class)
+                .setRepository(this.providersRepository)
+                .setMemoryRepository(this.providersMemoryRepository)
+                .setDtoFromEntityConverter(this.providerDtoFromEntityConverter);
+        configuration
+                .<InstrumentTypeEntity, InstrumentTypeEntitiesPackage, Short, InstrumentType, InstrumentTypesPackage>
+                        newDescriptor(InstrumentTypeEntity.class, InstrumentType.class)
+                .setDtoPackageClass(InstrumentTypesPackage.class)
+                .setRepository(this.instrumentTypesRepository)
+                .setMemoryRepository(this.instrumentTypesMemoryRepository)
+                .setDtoFromEntityConverter(this.instrumentTypeDtoFromEntityConverter);
+        configuration
+                .<CurrencyEntity, CurrencyEntitiesPackage, Integer, Currency, CurrenciesPackage>
+                        newDescriptor(CurrencyEntity.class, Currency.class)
+                .setDtoPackageClass(CurrenciesPackage.class)
+                .setRepository(this.currenciesRepository)
+                .setMemoryRepository(this.currenciesMemoryRepository)
+                .setDtoFromEntityConverter(this.currencyDtoFromEntityConverter);
+        configuration
+                .<SecurityEntity, SecurityEntitiesPackage, Integer, Security, SecuritiesPackage>
+                        newDescriptor(SecurityEntity.class, Security.class)
+                .setDtoPackageClass(SecuritiesPackage.class)
+                .setRepository(this.securitiesRepository)
+                .setMemoryRepository(this.securitiesMemoryRepository)
+                .setDtoFromEntityConverter(this.securityDtoFromEntityConverter)
+                .setEntityFromDtoConverter(this.securityEntityFromDtoConverter);
+        configuration
+                .<DerivativeEntity, DerivativeEntitiesPackage, Integer, Derivative, DerivativesPackage>
+                        newDescriptor(DerivativeEntity.class, Derivative.class)
+                .setDtoPackageClass(DerivativesPackage.class)
+                .setRepository(this.derivativesRepository)
+                .setMemoryRepository(this.derivativesMemoryRepository)
+                .setDtoFromEntityConverter(this.derivativeDtoFromEntityConverter)
+                .setEntityFromDtoConverter(this.derivativeEntityFromDtoConverter);
     }
     // </editor-fold>
     // -----------------------------------------------------------------------------------------------------------------

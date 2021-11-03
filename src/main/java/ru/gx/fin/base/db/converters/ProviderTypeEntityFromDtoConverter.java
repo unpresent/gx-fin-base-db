@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.gx.fin.base.db.entities.ProviderTypeEntitiesPackage;
 import ru.gx.fin.base.db.repository.ProviderTypesRepository;
-import ru.gx.data.AbstractEntityFromDtoConverter;
+import ru.gx.data.edlinking.AbstractEntityFromDtoConverter;
 import ru.gx.fin.base.db.entities.ProviderTypeEntity;
 import ru.gx.fin.base.db.dto.ProviderType;
 

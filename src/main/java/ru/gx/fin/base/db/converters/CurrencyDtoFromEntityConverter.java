@@ -5,7 +5,7 @@ import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import ru.gx.data.AbstractDtoFromEntityConverter;
+import ru.gx.data.edlinking.AbstractDtoFromEntityConverter;
 import ru.gx.fin.base.db.dto.CurrenciesPackage;
 import ru.gx.fin.base.db.dto.Currency;
 import ru.gx.fin.base.db.entities.CurrencyEntity;

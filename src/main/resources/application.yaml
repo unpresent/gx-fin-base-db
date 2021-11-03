@@ -1,22 +1,30 @@
 service:
   name: base-db
-  simple-worker.enabled: true
+  simple-settings-controller.enabled: true
+  active-sessions-container.enabled: true
+  entities-dto-links:
+    configurator-caller.enabled: true
+    simple-configuration.enabled: true
+  simple-worker:
+    enabled: true
+    wait-on-stop-ms: 8000
+    wait-on-restart-ms: 30000
+    min-time-per-iteration-ms: 5000
+    timeout-runner-life-ms: 45000
   income-topics:
-    simple-loader.enabled: true
     configurator-caller.enabled: true
-    simple-offsets-controller.enabled: true
+    simple-configuration.enabled: true
+    standard-loader.enabled: true
+    standard-offsets-controller.enabled: true
   outcome-topics:
-    simple-uploader.enabled: true # TODO: Как убрать это свойство?!
-  outcome-entities:
-    simple-uploader.enabled: true
     configurator-caller.enabled: true
-
-# base-db
-base-db:
-  wait_on_stop_ms: 6000
-  wait_on_restart_ms: 30000
-  min_time_per_iteration_ms: 5000
-  timeout_runner_life_ms: 45000
+    simple-configuration.enabled: true
+    standard-uploader.enabled: true
+    standard-offsets-controller.enabled: true
+  offsets-loaders:
+    jpa.enabled: true
+  offsets-savers:
+    jpa.enabled: true
 
 # Логирование
 logging:
@@ -41,16 +49,14 @@ server:
 #kafka
 kafka:
   server: localhost:9092
-  group_id: base-db
-  duration_on_poll_ms : 200
-  income_topic:
+  income-topics:
     securities: baseSecuritiesRequests
     derivatives: baseDerivativesRequests
-  outcome_topic:
+  outcome-topics:
     places: basePlaces
-    provider_types: baseProviderTypes
+    provider-types: baseProviderTypes
     providers: baseProviders
-    instrument_types: baseInstrumentTypes
+    instrument-types: baseInstrumentTypes
     currencies: baseCurrencies
     securities: baseSecurities
     derivatives: baseDerivatives
@@ -61,16 +67,8 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQL95Dialect
     show-sql: false
     hibernate:
-      show_sql: true
-      use_sql_comments: true
-      fomat_sql: true
-      cahce:
-        use_query_cache: true
       ddl-auto: validate # create, create-drop, update, validate
-      naming:
-        physical-strategy: ru.gx.data.naming.PhysicalNamingStrategyQuotedImpl
-
-
+      naming.physical-strategy: ru.gx.data.naming.PhysicalNamingStrategyQuotedImpl
   datasource:
     url: jdbc:postgresql://localhost:5432/gxfin_base
     username: gxfin

@@ -9,7 +9,7 @@ import ru.gx.fin.base.db.dto.ProviderType;
 import ru.gx.fin.base.db.dto.ProviderTypesPackage;
 import ru.gx.fin.base.db.entities.ProviderTypeEntity;
 import ru.gx.fin.base.db.memdata.ProviderTypesMemoryRepository;
-import ru.gx.data.AbstractDtoFromEntityConverter;
+import ru.gx.data.edlinking.AbstractDtoFromEntityConverter;
 
 import java.util.Objects;
 

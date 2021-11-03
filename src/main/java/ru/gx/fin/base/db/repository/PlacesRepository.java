@@ -7,6 +7,6 @@ import ru.gx.fin.base.db.entities.PlaceEntity;
 import java.util.Optional;
 
 @Repository
-public interface PlacesRepository extends JpaRepository<PlaceEntity, Integer> {
+public interface PlacesRepository extends JpaRepository<PlaceEntity, Short> {
     Optional<PlaceEntity> findByCode(String code);
 }

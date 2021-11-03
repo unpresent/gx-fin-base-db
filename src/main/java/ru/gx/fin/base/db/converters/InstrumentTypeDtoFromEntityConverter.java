@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.gx.fin.base.db.dto.InstrumentTypesPackage;
 import ru.gx.fin.base.db.entities.InstrumentTypeEntity;
 import ru.gx.fin.base.db.memdata.InstrumentTypesMemoryRepository;
-import ru.gx.data.AbstractDtoFromEntityConverter;
+import ru.gx.data.edlinking.AbstractDtoFromEntityConverter;
 import ru.gx.fin.base.db.dto.InstrumentType;
 
 import java.util.Objects;
