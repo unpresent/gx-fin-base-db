@@ -42,7 +42,7 @@ public class CurrencyEntity extends AbstractInstrumentEntity {
      * Код Dec
      */
     @Column(name = "CodeDec", nullable = true)
-    private short codeDec;
+    private Short codeDec;
 
     /**
      * Знак
@@ -60,5 +60,5 @@ public class CurrencyEntity extends AbstractInstrumentEntity {
      * Сколько разменных единиц в единице валюты (сколько "копеек в рубле")
      */
     @Column(name = "PartsInOne", nullable = true)
-    private int partsInOne;
+    private Integer partsInOne;
 }

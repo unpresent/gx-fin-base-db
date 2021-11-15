@@ -19,10 +19,11 @@
         <gx-data-starter.version>1.1</gx-data-starter.version>
         <gx-kafka-starter.version>1.1</gx-kafka-starter.version>
         <gx-std-starter.version>1.1</gx-std-starter.version>
+        <gx-fin-base-db-out-api.version>1.1</gx-fin-base-db-out-api.version>
 
         <org.springframework.boot.version>2.5.1</org.springframework.boot.version>
         <org.springframework.kafka.version>2.7.0</org.springframework.kafka.version>
-        <org.testcontainers.version>1.15.3</org.testcontainers.version>
+        <org.testcontainers.version>1.16.2</org.testcontainers.version>
 
         <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <maven-resource-plugin.version>3.2.0</maven-resource-plugin.version>
@@ -68,6 +69,11 @@
             <groupId>ru.gx</groupId>
             <artifactId>gx-std-starter</artifactId>
             <version>${gx-std-starter.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ru.gx.fin</groupId>
+            <artifactId>gx-fin-base-db-out-api</artifactId>
+            <version>${gx-fin-base-db-out-api.version}</version>
         </dependency>
 
         <dependency>

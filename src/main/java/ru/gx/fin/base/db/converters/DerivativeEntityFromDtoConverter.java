@@ -2,15 +2,17 @@ package ru.gx.fin.base.db.converters;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.gx.data.NotAllowedObjectUpdateException;
 import ru.gx.data.edlinking.AbstractEntityFromDtoConverter;
+import ru.gx.fin.base.db.dto.Currency;
+import ru.gx.fin.base.db.dto.Security;
+import ru.gx.fin.base.db.entities.*;
 import ru.gx.fin.base.db.repository.SecuritiesRepository;
 import ru.gx.fin.base.db.dto.Derivative;
-import ru.gx.fin.base.db.entities.AbstractInstrumentEntity;
-import ru.gx.fin.base.db.entities.DerivativeEntitiesPackage;
-import ru.gx.fin.base.db.entities.DerivativeEntity;
 import ru.gx.fin.base.db.repository.CurrenciesRepository;
 import ru.gx.fin.base.db.repository.DerivativesRepository;
 import ru.gx.fin.base.db.repository.InstrumentTypesRepository;
@@ -19,66 +21,71 @@ import java.util.Objects;
 
 import static lombok.AccessLevel.*;
 
-public class DerivativeEntityFromDtoConverter extends AbstractEntityFromDtoConverter<DerivativeEntity, DerivativeEntitiesPackage, Derivative> {
-    @Getter
-    @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private CurrenciesRepository currenciesRepository;
-
-    @Getter
-    @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private SecuritiesRepository securitiesRepository;
-
+public class DerivativeEntityFromDtoConverter extends AbstractEntityFromDtoConverter<DerivativeEntity, Derivative> {
     @Getter
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private DerivativesRepository derivativesRepository;
 
     @Getter
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private InstrumentTypesRepository instrumentTypesRepository;
+    private InstrumentTypeEntityFromDtoConverter instrumentTypeEntityFromDtoConverter;
+
+    @Getter
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
+    private CurrencyEntityFromDtoConverter currencyEntityFromDtoConverter;
+
+    @Getter
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
+    private SecurityEntityFromDtoConverter securityEntityFromDtoConverter;
+
+    @Getter(PROTECTED)
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
+    @NotNull
+    private ProviderEntityFromDtoConverter providerEntityFromDtoConverter;
 
     @Override
-    public void fillEntityFromDto(@NotNull final DerivativeEntity destination, @NotNull final Derivative source) {
+    public @Nullable DerivativeEntity findDtoBySource(@Nullable Derivative source) {
+        if (source == null) {
+            return null;
+        }
+        return this.derivativesRepository.findByGuid(source.getGuid()).orElse(null);
+    }
+
+    @Override
+    public @NotNull DerivativeEntity createDtoBySource(@NotNull Derivative source) {
+        final var result = new DerivativeEntity();
+        updateDtoBySource(result, source);
+        return result;
+    }
+
+    @Override
+    public boolean isDestinationUpdatable(@NotNull DerivativeEntity destination) {
+        return true;
+    }
+
+    @SneakyThrows(Exception.class)
+    @Override
+    public void updateDtoBySource(@NotNull DerivativeEntity destination, @NotNull Derivative source) {
+        final var type = this.instrumentTypeEntityFromDtoConverter.findDtoBySource(source.getType());
         AbstractInstrumentEntity destBaseInstrument = null;
         final var sourceBaseInstrument = source.getBaseInstrument();
         if (sourceBaseInstrument != null) {
-            final var sourceBaseInstrumentType = sourceBaseInstrument.getType();
-            if (sourceBaseInstrumentType != null) {
-                final var sourceBaseInstrumentTypeRootCode = sourceBaseInstrumentType.getRootType() != null
-                        ? sourceBaseInstrumentType.getRootType().getCode()
-                        : "UNKNOWN";
-                switch (sourceBaseInstrumentTypeRootCode) {
-                    case "SEC":
-                        destBaseInstrument = this.securitiesRepository.findByGuid(sourceBaseInstrument.getGuid()).orElse(null);
-                        break;
-                    case "CUR":
-                        destBaseInstrument = this.currenciesRepository.findByGuid(sourceBaseInstrument.getGuid()).orElse(null);
-                        break;
-                    case "DER":
-                        destBaseInstrument = this.derivativesRepository.findByGuid(sourceBaseInstrument.getGuid()).orElse(null);
-                        break;
-                }
+            if (sourceBaseInstrument instanceof Currency) {
+                destBaseInstrument = this.currencyEntityFromDtoConverter.findDtoBySource((Currency) sourceBaseInstrument);
+            } else if (sourceBaseInstrument instanceof Security) {
+                destBaseInstrument = this.securityEntityFromDtoConverter.findDtoBySource((Security) sourceBaseInstrument);
+            } else if (sourceBaseInstrument instanceof Derivative) {
+                destBaseInstrument = this.findDtoBySource((Derivative) sourceBaseInstrument);
             }
         }
 
         destination
-                .setExpireDate(source.getExpireDate())
                 .setBaseInstrument(destBaseInstrument)
-                .setInternalFullName(source.getInternalFullName())
+                .setExpireDate(source.getExpireDate())
+                .setType(type)
                 .setInternalShortName(source.getInternalShortName())
-                .setType(InstrumentTypeEntityFromDtoConverter.getEntityByDto(this.instrumentTypesRepository, source.getType()));
-    }
+                .setInternalFullName(source.getInternalFullName());
 
-    @Override
-    @NotNull
-    protected DerivativeEntity getOrCreateEntityByDto(@NotNull final Derivative source) {
-        final var result = getEntityByDto(this.derivativesRepository, source);
-        return Objects.requireNonNullElseGet(result, DerivativeEntity::new);
+        CodesFillUtils.fillEntityCodes(destination, source, this.providerEntityFromDtoConverter);
     }
-
-    @Nullable
-    public static DerivativeEntity getEntityByDto(@NotNull final DerivativesRepository entitiesRepository, @Nullable final Derivative source) {
-        if (source == null) {
-            return null;
-        }
-        return entitiesRepository.findByGuid(source.getGuid()).orElse(null);
-    }}
+}

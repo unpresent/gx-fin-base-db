@@ -5,6 +5,8 @@ import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.gx.data.NotAllowedObjectUpdateException;
+import ru.gx.fin.base.db.entities.PlaceEntity;
 import ru.gx.fin.base.db.repository.PlacesRepository;
 import ru.gx.fin.base.db.repository.ProviderTypesRepository;
 import ru.gx.fin.base.db.repository.ProvidersRepository;
@@ -17,43 +19,49 @@ import java.util.Objects;
 
 import static lombok.AccessLevel.PROTECTED;
 
-public class ProviderEntityFromDtoConverter extends AbstractEntityFromDtoConverter<ProviderEntity, ProviderEntitiesPackage, Provider> {
-    @Getter
+public class ProviderEntityFromDtoConverter extends AbstractEntityFromDtoConverter<ProviderEntity, Provider> {
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private ProvidersRepository providersRepository;
 
-    @Getter
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private ProviderTypesRepository providerTypesRepository;
+    private ProviderTypeEntityFromDtoConverter providerTypeEntityFromDtoConverter;
 
-    @Getter
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private PlacesRepository placesRepository;
+    private PlaceEntityFromDtoConverter placeEntityFromDtoConverter;
 
     @Override
-    public void fillEntityFromDto(@NotNull final ProviderEntity destination, @NotNull final Provider source) {
-        destination
-                .setCode(source.getCode())
-                .setType(ProviderTypeEntityFromDtoConverter.getEntityByDto(this.providerTypesRepository, source.getType()))
-                .setPlace(PlaceEntityFromDtoConverter.getEntityByDto(this.placesRepository, source.getPlace()));
+    @Nullable
+    public ProviderEntity findDtoBySource(@Nullable Provider source) {
+        if (source == null) {
+            return null;
+        }
+        return this.providersRepository.findByCode(source.getCode()).orElse(null);
     }
 
     @Override
     @NotNull
-    protected ProviderEntity getOrCreateEntityByDto(@NotNull final Provider source) {
-        final var result = getEntityByDto(this.providersRepository, source);
-        return Objects.requireNonNullElseGet(result, ProviderEntity::new);
+    public ProviderEntity createDtoBySource(@NotNull Provider source) {
+        final var result = new ProviderEntity();
+        updateDtoBySource(result, source);
+        return result;
     }
 
-    @Nullable
-    public static ProviderEntity getEntityByDto(@NotNull final ProvidersRepository entitiesRepository, @Nullable final Provider source) {
-        if (source == null) {
-            return null;
-        }
-        final var sourceCode = source.getCode();
-        if (sourceCode == null) {
-            return null;
-        }
-        return entitiesRepository.findByCode(sourceCode).orElse(null);
+    @Override
+    public boolean isDestinationUpdatable(@NotNull ProviderEntity destination) {
+        return true;
+    }
+
+    @Override
+    public void updateDtoBySource(@NotNull ProviderEntity destination, @NotNull Provider source) {
+        final var type = this.providerTypeEntityFromDtoConverter.findDtoBySource(source.getType());
+        final var place = this.placeEntityFromDtoConverter.findDtoBySource(source.getPlace());
+        destination
+                .setCode(source.getCode())
+                .setName(source.getName())
+                .setType(type)
+                .setPlace(place);
     }
 }

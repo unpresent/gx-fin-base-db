@@ -2,9 +2,11 @@ package ru.gx.fin.base.db.converters;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.gx.data.NotAllowedObjectUpdateException;
 import ru.gx.fin.base.db.dto.ProvidersPackage;
 import ru.gx.fin.base.db.memdata.PlacesMemoryRepository;
 import ru.gx.fin.base.db.memdata.ProviderTypesMemoryRepository;
@@ -17,36 +19,22 @@ import java.util.Objects;
 
 import static lombok.AccessLevel.PROTECTED;
 
-public class ProviderDtoFromEntityConverter extends AbstractDtoFromEntityConverter<Provider, ProvidersPackage, ProviderEntity> {
-    @Getter
+public class ProviderDtoFromEntityConverter extends AbstractDtoFromEntityConverter<Provider, ProviderEntity> {
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private ProvidersMemoryRepository providersMemoryRepository;
 
-    @Getter
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private ProviderTypesMemoryRepository providerTypesMemoryRepository;
+    private ProviderTypeDtoFromEntityConverter providerTypeDtoFromEntityConverter;
 
-    @Getter
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private PlacesMemoryRepository placesMemoryRepository;
+    private PlaceDtoFromEntityConverter placeDtoFromEntityConverter;
 
     @Override
-    public void fillDtoFromEntity(@NotNull final Provider destination, @NotNull final ProviderEntity source) {
-        destination
-                .setCode(source.getCode())
-                .setType(ProviderTypeDtoFromEntityConverter.getDtoByEntity(this.providerTypesMemoryRepository, source.getType()))
-                .setPlace(PlaceDtoFromEntityConverter.getDtoByEntity(this.placesMemoryRepository, source.getPlace()));
-    }
-
-    @Override
-    @NotNull
-    protected Provider getOrCreateDtoByEntity(@NotNull final ProviderEntity source) {
-        final var result = getDtoByEntity(this.providersMemoryRepository, source);
-        return Objects.requireNonNullElseGet(result, Provider::new);
-    }
-
     @Nullable
-    public static Provider getDtoByEntity(@NotNull final ProvidersMemoryRepository memoryRepository, @Nullable final ProviderEntity source) {
+    public Provider findDtoBySource(@Nullable final ProviderEntity source) {
         if (source == null) {
             return null;
         }
@@ -54,6 +42,39 @@ public class ProviderDtoFromEntityConverter extends AbstractDtoFromEntityConvert
         if (sourceCode == null) {
             return null;
         }
-        return memoryRepository.getByKey(sourceCode);
+        return this.providersMemoryRepository.getByKey(sourceCode);
+    }
+
+    @SneakyThrows(Exception.class)
+    @Override
+    @NotNull
+    public Provider createDtoBySource(@NotNull ProviderEntity source) {
+        final var sourceType = source.getType();
+        if (sourceType == null) {
+            throw new Exception("It isn't allowed create Provider with null type; source = " + source);
+        }
+        final var type = this.providerTypeDtoFromEntityConverter.findDtoBySource(sourceType);
+        if (type == null) {
+            throw new Exception("Can't find in memory ProviderType by ProviderTypeEntity; sourceType = " + sourceType);
+        }
+
+        final var place = this.placeDtoFromEntityConverter.findDtoBySource(source.getPlace());
+
+        return new Provider(
+                source.getCode(),
+                source.getName(),
+                type,
+                place
+        );
+    }
+
+    @Override
+    public boolean isDestinationUpdatable(@NotNull Provider destination) {
+        return false;
+    }
+
+    @Override
+    public void updateDtoBySource(@NotNull Provider destination, @NotNull ProviderEntity source) throws NotAllowedObjectUpdateException {
+        throw new NotAllowedObjectUpdateException(Provider.class, null);
     }
 }

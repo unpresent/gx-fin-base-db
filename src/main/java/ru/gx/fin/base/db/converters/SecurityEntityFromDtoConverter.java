@@ -2,50 +2,61 @@ package ru.gx.fin.base.db.converters;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import ru.gx.fin.base.db.entities.SecurityEntitiesPackage;
+import ru.gx.data.edlinking.AbstractEntityFromDtoConverter;
+import ru.gx.fin.base.db.dto.Security;
 import ru.gx.fin.base.db.entities.SecurityEntity;
 import ru.gx.fin.base.db.repository.SecuritiesRepository;
-import ru.gx.data.edlinking.AbstractEntityFromDtoConverter;
-import ru.gx.fin.base.db.repository.InstrumentTypesRepository;
-import ru.gx.fin.base.db.dto.Security;
-
-import java.util.Objects;
 
 import static lombok.AccessLevel.PROTECTED;
 
-public class SecurityEntityFromDtoConverter extends AbstractEntityFromDtoConverter<SecurityEntity, SecurityEntitiesPackage, Security> {
-    @Getter
+public class SecurityEntityFromDtoConverter extends AbstractEntityFromDtoConverter<SecurityEntity, Security> {
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private SecuritiesRepository securitiesRepository;
 
-    @Getter
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    private InstrumentTypesRepository instrumentTypesRepository;
+    private InstrumentTypeEntityFromDtoConverter instrumentTypeEntityFromDtoConverter;
+
+    @Getter(PROTECTED)
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
+    private ProviderEntityFromDtoConverter providerEntityFromDtoConverter;
 
     @Override
-    public void fillEntityFromDto(@NotNull final SecurityEntity destination, @NotNull final Security source) {
-        destination
-                .setCodeIsin(source.getCodeIsin())
-                .setInternalFullName(source.getInternalFullName())
-                .setInternalShortName(source.getInternalShortName())
-                .setType(InstrumentTypeEntityFromDtoConverter.getEntityByDto(this.instrumentTypesRepository, source.getType()));
-        // TODO: Codes + Guids
-    }
-
-    @Override
-    @NotNull
-    protected SecurityEntity getOrCreateEntityByDto(@NotNull final Security source) {
-        final var result = getEntityByDto(this.securitiesRepository, source);
-        return Objects.requireNonNullElseGet(result, SecurityEntity::new);
-    }
-
-    @Nullable
-    public static SecurityEntity getEntityByDto(@NotNull final SecuritiesRepository entitiesRepository, @Nullable final Security source) {
+    public @Nullable SecurityEntity findDtoBySource(@Nullable Security source) {
         if (source == null) {
             return null;
         }
-        return entitiesRepository.findByGuid(source.getGuid()).orElse(null);
-    }}
+        return this.securitiesRepository.findByGuid(source.getGuid()).orElse(null);
+    }
+
+    @Override
+    public @NotNull SecurityEntity createDtoBySource(@NotNull Security source) {
+        final var result = new SecurityEntity();
+        updateDtoBySource(result, source);
+        return result;
+    }
+
+    @Override
+    public boolean isDestinationUpdatable(@NotNull SecurityEntity destination) {
+        return true;
+    }
+
+    @SneakyThrows(Exception.class)
+    @Override
+    public void updateDtoBySource(@NotNull SecurityEntity destination, @NotNull Security source) {
+        final var type = this.instrumentTypeEntityFromDtoConverter.findDtoBySource(source.getType());
+        destination
+                .setCodeIsin(source.getCodeIsin())
+                .setType(type)
+                .setInternalShortName(source.getInternalShortName())
+                .setInternalFullName(source.getInternalFullName());
+
+        CodesFillUtils.fillEntityCodes(destination, source, this.providerEntityFromDtoConverter);
+
+    }
+}

@@ -2,76 +2,85 @@ package ru.gx.fin.base.db.converters;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.gx.data.NotAllowedObjectUpdateException;
 import ru.gx.data.edlinking.AbstractDtoFromEntityConverter;
-import ru.gx.fin.base.db.dto.CurrenciesPackage;
 import ru.gx.fin.base.db.dto.Currency;
 import ru.gx.fin.base.db.entities.CurrencyEntity;
 import ru.gx.fin.base.db.memdata.CurrenciesMemoryRepository;
-import ru.gx.fin.base.db.memdata.InstrumentTypesMemoryRepository;
-import ru.gx.fin.base.db.memdata.ProvidersMemoryRepository;
-import ru.gx.fin.base.db.dto.InstrumentCode;
-
-import java.util.Objects;
 
 import static lombok.AccessLevel.PROTECTED;
 
-public class CurrencyDtoFromEntityConverter extends AbstractDtoFromEntityConverter<Currency, CurrenciesPackage, CurrencyEntity> {
-    @Getter(PROTECTED)
-    @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    @NotNull
-    private ProvidersMemoryRepository providersMemoryRepository;
-
-    @Getter(PROTECTED)
-    @Setter(value = PROTECTED, onMethod_ = @Autowired)
-    @NotNull
-    private InstrumentTypesMemoryRepository instrumentTypesMemoryRepository;
-
+public class CurrencyDtoFromEntityConverter extends AbstractDtoFromEntityConverter<Currency, CurrencyEntity> {
     @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     @NotNull
     private CurrenciesMemoryRepository currenciesMemoryRepository;
 
-    @Override
-    public void fillDtoFromEntity(@NotNull final Currency destination, @NotNull final CurrencyEntity source) {
-        destination
-                .setCodeAlpha2(source.getCodeAlpha2())
-                .setCodeAlpha3(source.getCodeAlpha3())
-                .setCodeDec(source.getCodeDec())
-                .setSign(source.getSign())
-                .setPartsNames(source.getPartsNames())
-                .setPartsInOne(source.getPartsInOne())
-                .setType(InstrumentTypeDtoFromEntityConverter.getDtoByEntity(this.instrumentTypesMemoryRepository, source.getType()))
-                .setInternalFullName(source.getInternalFullName())
-                .setInternalShortName(source.getInternalShortName())
-                .setGuid(source.getPrimaryGuid());
-
-        source.getCodes().forEach(sourceCode -> {
-            final var code = new InstrumentCode()
-                    .setCode(sourceCode.getCode())
-                    .setDateFrom(sourceCode.getDateFrom())
-                    .setDateTo(sourceCode.getDateTo())
-                    .setIndex(sourceCode.getIndex())
-                    .setProvider(providersMemoryRepository.getByKey(sourceCode.getProvider().getCode()));
-            destination.getCodes().add(code);
-        });
-    }
-
-    @Override
+    @Getter(PROTECTED)
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
     @NotNull
-    protected Currency getOrCreateDtoByEntity(@NotNull final CurrencyEntity source) {
-        final var result = getDtoByEntity(this.currenciesMemoryRepository, source);
-        return Objects.requireNonNullElseGet(result, Currency::new);
-    }
+    private ProviderDtoFromEntityConverter providerDtoFromEntityConverter;
 
+    @Getter(PROTECTED)
+    @Setter(value = PROTECTED, onMethod_ = @Autowired)
+    @NotNull
+    private InstrumentTypeDtoFromEntityConverter instrumentTypeDtoFromEntityConverter;
+
+    @Override
     @Nullable
-    public static Currency getDtoByEntity(@NotNull final CurrenciesMemoryRepository memoryRepository, @Nullable CurrencyEntity source) {
+    public Currency findDtoBySource(@Nullable final CurrencyEntity source) {
         if (source == null) {
             return null;
         }
-        return memoryRepository.getByKey(source.getPrimaryGuid());
+        final var guid = source.getPrimaryGuid();
+        if (guid == null) {
+            return null;
+        }
+        return this.currenciesMemoryRepository.getByKey(guid);
     }
 
+    @SneakyThrows(Exception.class)
+    @Override
+    @NotNull
+    public Currency createDtoBySource(@NotNull CurrencyEntity source) {
+        final var sourceType = source.getType();
+        if (sourceType == null) {
+            throw new Exception("It isn't allowed create Currency with null type; source = " + source);
+        }
+        final var type = this.instrumentTypeDtoFromEntityConverter.findDtoBySource(source.getType());
+        if (type == null) {
+            throw new Exception("Can't find in memory InstrumentType by InstrumentTypeEntity; sourceType = " + sourceType);
+        }
+
+        final var result = new Currency(
+            source.getPrimaryGuid(),
+            type,
+            source.getInternalShortName(),
+            source.getInternalFullName(),
+            source.getCodeAlpha2(),
+            source.getCodeAlpha3(),
+            source.getCodeDec(),
+            source.getSign(),
+            source.getPartsNames(),
+            source.getPartsInOne()
+        );
+
+        CodesFillUtils.fillDtoCodes(result, source, this.providerDtoFromEntityConverter);
+
+        return result;
+    }
+
+    @Override
+    public boolean isDestinationUpdatable(@NotNull Currency currency) {
+        return false;
+    }
+
+    @Override
+    public void updateDtoBySource(@NotNull Currency currency, @NotNull CurrencyEntity currencyEntity) throws NotAllowedObjectUpdateException {
+        throw new NotAllowedObjectUpdateException(Currency.class, null);
+    }
 }

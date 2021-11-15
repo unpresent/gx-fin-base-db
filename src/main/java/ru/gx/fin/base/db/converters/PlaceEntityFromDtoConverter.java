@@ -2,47 +2,49 @@ package ru.gx.fin.base.db.converters;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import ru.gx.fin.base.db.entities.PlaceEntitiesPackage;
-import ru.gx.fin.base.db.entities.PlaceEntity;
-import ru.gx.fin.base.db.repository.PlacesRepository;
+import ru.gx.data.NotAllowedObjectUpdateException;
 import ru.gx.data.edlinking.AbstractEntityFromDtoConverter;
 import ru.gx.fin.base.db.dto.Place;
-
-import java.util.Objects;
+import ru.gx.fin.base.db.entities.PlaceEntity;
+import ru.gx.fin.base.db.repository.PlacesRepository;
 
 import static lombok.AccessLevel.PROTECTED;
 
-public class PlaceEntityFromDtoConverter extends AbstractEntityFromDtoConverter<PlaceEntity, PlaceEntitiesPackage, Place> {
-    @Getter
+public class PlaceEntityFromDtoConverter extends AbstractEntityFromDtoConverter<PlaceEntity, Place> {
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private PlacesRepository placesRepository;
 
     @Override
-    public void fillEntityFromDto(@NotNull final PlaceEntity destination, @NotNull final Place source) {
-        destination
-                .setCode(source.getCode())
-                .setName(source.getName());
+    @Nullable
+    public PlaceEntity findDtoBySource(@Nullable Place source) {
+        if (source == null) {
+            return null;
+        }
+        return this.placesRepository.findByCode(source.getCode()).orElse(null);
     }
 
     @Override
     @NotNull
-    protected PlaceEntity getOrCreateEntityByDto(@NotNull final Place source) {
-        final var result = getEntityByDto(this.placesRepository, source);
-        return Objects.requireNonNullElseGet(result, PlaceEntity::new);
+    public PlaceEntity createDtoBySource(@NotNull Place source) {
+        final var result = new PlaceEntity();
+        updateDtoBySource(result, source);
+        return result;
     }
 
-    @Nullable
-    public static PlaceEntity getEntityByDto(@NotNull final PlacesRepository entitiesRepository, @Nullable final Place source) {
-        if (source == null) {
-            return null;
-        }
-        final var sourceCode = source.getCode();
-        if (sourceCode == null) {
-            return null;
-        }
-        return entitiesRepository.findByCode(sourceCode).orElse(null);
+    @Override
+    public boolean isDestinationUpdatable(@NotNull PlaceEntity destination) {
+        return true;
+    }
+
+    @Override
+    public void updateDtoBySource(@NotNull PlaceEntity destination, @NotNull Place source) {
+        destination
+                .setCode(source.getCode())
+                .setName(source.getName());
     }
 }

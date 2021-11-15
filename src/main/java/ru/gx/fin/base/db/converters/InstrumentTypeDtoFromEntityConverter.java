@@ -3,47 +3,24 @@ package ru.gx.fin.base.db.converters;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import ru.gx.fin.base.db.dto.InstrumentTypesPackage;
-import ru.gx.fin.base.db.entities.InstrumentTypeEntity;
-import ru.gx.fin.base.db.memdata.InstrumentTypesMemoryRepository;
+import ru.gx.data.NotAllowedObjectUpdateException;
 import ru.gx.data.edlinking.AbstractDtoFromEntityConverter;
 import ru.gx.fin.base.db.dto.InstrumentType;
-
-import java.util.Objects;
+import ru.gx.fin.base.db.entities.InstrumentTypeEntity;
+import ru.gx.fin.base.db.memdata.InstrumentTypesMemoryRepository;
 
 import static lombok.AccessLevel.PROTECTED;
 
-public class InstrumentTypeDtoFromEntityConverter extends AbstractDtoFromEntityConverter<InstrumentType, InstrumentTypesPackage, InstrumentTypeEntity> {
-    @Getter
+public class InstrumentTypeDtoFromEntityConverter extends AbstractDtoFromEntityConverter<InstrumentType, InstrumentTypeEntity> {
+    @Getter(PROTECTED)
     @Setter(value = PROTECTED, onMethod_ = @Autowired)
     private InstrumentTypesMemoryRepository instrumentTypesMemoryRepository;
 
     @Override
-    public void fillDtoFromEntity(@NotNull final InstrumentType destination, @NotNull final InstrumentTypeEntity source) {
-        // TODO: Подумать над RootType == this
-        destination
-                .setCode(source.getCode())
-                .setParent(
-                        getDtoByEntity(this.instrumentTypesMemoryRepository, source.getParent())
-                )
-                .setRootType(
-                        source.getParent() == null && source == source.getRootType()
-                        ? null
-                        : getDtoByEntity(this.instrumentTypesMemoryRepository, source.getRootType())
-                )
-                .setNameShort(source.getNameShort())
-                .setNameFull(source.getNameFull());
-    }
-
-    @Override
-    @NotNull
-    protected InstrumentType getOrCreateDtoByEntity(@NotNull final InstrumentTypeEntity source) {
-        final var result = getDtoByEntity(this.instrumentTypesMemoryRepository, source);
-        return Objects.requireNonNullElseGet(result, InstrumentType::new);
-    }
-
-    public static InstrumentType getDtoByEntity(InstrumentTypesMemoryRepository memoryRepository, InstrumentTypeEntity source) {
+    @Nullable
+    public InstrumentType findDtoBySource(@Nullable final InstrumentTypeEntity source) {
         if (source == null) {
             return null;
         }
@@ -51,6 +28,30 @@ public class InstrumentTypeDtoFromEntityConverter extends AbstractDtoFromEntityC
         if (sourceCode == null) {
             return null;
         }
-        return memoryRepository.getByKey(sourceCode);
+        return this.instrumentTypesMemoryRepository.getByKey(sourceCode);
+    }
+
+    @Override
+    @NotNull
+    public InstrumentType createDtoBySource(@NotNull final InstrumentTypeEntity source) {
+        final var rootType = this.findDtoBySource(source.getRootType());
+        final var parent = this.findDtoBySource(source.getParent());
+        return new InstrumentType(
+                rootType,
+                parent,
+                source.getCode(),
+                source.getNameShort(),
+                source.getNameFull()
+        );
+    }
+
+    @Override
+    public boolean isDestinationUpdatable(@NotNull final InstrumentType destination) {
+        return false;
+    }
+
+    @Override
+    public void updateDtoBySource(@NotNull final InstrumentType destination, @NotNull final InstrumentTypeEntity source) throws NotAllowedObjectUpdateException {
+        throw new NotAllowedObjectUpdateException(InstrumentType.class, null);
     }
 }

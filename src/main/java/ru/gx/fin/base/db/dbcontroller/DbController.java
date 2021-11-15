@@ -3,6 +3,7 @@ package ru.gx.fin.base.db.dbcontroller;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.SessionFactory;
 import org.jetbrains.annotations.NotNull;
@@ -190,7 +191,7 @@ public class DbController {
                 try {
                     // Загружаем данные и сохраняем в БД
                     final var result = this.incomeTopicsLoader.processAllTopics(this.incomeTopicsConfiguration);
-                    for (var c: result.values()) {
+                    for (var c : result.values()) {
                         if (c.size() > 1) {
                             event.setImmediateRunNextIteration(true);
                             break;
@@ -243,14 +244,15 @@ public class DbController {
      *
      * @param event Объект-событие с параметрами.
      */
+    @SneakyThrows(NotAllowedObjectUpdateException.class)
     @EventListener(LoadedSecuritiesEvent.class)
-    public void loadedSecurities(LoadedSecuritiesEvent event) throws InvalidDataObjectTypeException {
+    public void loadedSecurities(LoadedSecuritiesEvent event) {
         log.debug("Starting loadedSecurities()");
         try {
             this.simpleWorker.runnerIsLifeSet();
 
             final var securityEntitiesPackage = new SecurityEntitiesPackage();
-            this.securityEntityFromDtoConverter.fillEntitiesPackageFromDtoPackage(securityEntitiesPackage, event.getObjects());
+            this.securityEntityFromDtoConverter.fillDtoCollectionFromSource(securityEntitiesPackage.getObjects(), event.getObjects());
             final var started = System.currentTimeMillis();
             this.securitiesRepository.saveAll(securityEntitiesPackage.getObjects());
             // TODO: Переделать в обработку Request-а и отправить изменение
@@ -266,14 +268,15 @@ public class DbController {
      *
      * @param event Объект-событие с параметрами.
      */
+    @SneakyThrows(NotAllowedObjectUpdateException.class)
     @EventListener(LoadedDerivativesEvent.class)
-    public void loadedDerivatives(LoadedDerivativesEvent event) throws InvalidDataObjectTypeException {
+    public void loadedDerivatives(LoadedDerivativesEvent event) {
         log.debug("Starting loadedDerivatives()");
         try {
             this.simpleWorker.runnerIsLifeSet();
 
             final var derivativeEntitiesPackage = new DerivativeEntitiesPackage();
-            this.derivativeEntityFromDtoConverter.fillEntitiesPackageFromDtoPackage(derivativeEntitiesPackage, event.getObjects());
+            this.derivativeEntityFromDtoConverter.fillDtoCollectionFromSource(derivativeEntitiesPackage.getObjects(), event.getObjects());
             final var started = System.currentTimeMillis();
             this.derivativesRepository.saveAll(derivativeEntitiesPackage.getObjects());
             // TODO: Переделать в обработку Request-а и отправить изменение
@@ -287,8 +290,14 @@ public class DbController {
     // -----------------------------------------------------------------------------------------------------------------
     // <editor-fold desc="Вспомогательные сервисы">
     protected void publishAllOnStart() throws Exception {
-        for (var c : this.outcomeTopicsConfiguration.getAll()) {
-            publishSnapshot(c.getTopic());
+        for (var p = 0; p < this.outcomeTopicsConfiguration.prioritiesCount(); p++) {
+            final var pList = this.outcomeTopicsConfiguration.getByPriority(p);
+            if (pList == null) {
+                continue;
+            }
+            for (var c : pList) {
+                publishSnapshot(c.getTopic());
+            }
         }
     }
 
@@ -307,7 +316,12 @@ public class DbController {
             throw new EntitiesDtoLinksConfigurationException("Can't get CrudRepository by dtoClass " + topicDescriptor.getDataObjectClass().getName());
         }
 
-        final var converter = linkDescriptor.getDtoFromEntityConverter();
+        final var memoryRepository = linkDescriptor.getMemoryRepository();
+        if (memoryRepository == null) {
+            throw new EntitiesDtoLinksConfigurationException("Can't get MemoryRepository by dtoClass " + topicDescriptor.getDataObjectClass().getName());
+        }
+
+        final var converter = (DtoFromEntityConverter<DataObject, EntityObject>)linkDescriptor.getDtoFromEntityConverter();
         if (converter == null) {
             throw new EntitiesDtoLinksConfigurationException("Can't get Converter by dtoClass " + topicDescriptor.getDataObjectClass().getName());
         }
@@ -316,9 +330,12 @@ public class DbController {
         final var entityObjects = repository.findAll();
 
         // Преобразуем в DTO
-        final var dataPackage = linkDescriptor.createDtoPackage();
-        converter.fillDtoPackageFromEntitiesPackage(dataPackage, entityObjects);
-        final var dataObjects = (Collection<DataObject>)dataPackage.getObjects();
+        final var dataPackage = (DataPackage<DataObject>) linkDescriptor.createDtoPackage();
+        final var dataObjects = (Collection<DataObject>) dataPackage.getObjects();
+        converter.fillDtoCollectionFromSource(dataObjects, entityObjects);
+
+        // TODO: !!!!
+        memoryRepository.putAll(dataObjects);
 
         // Выгружаем данные
         this.outcomeTopicsUploader.publishFullSnapshot(topicDescriptor, dataObjects, null);
@@ -334,7 +351,7 @@ public class DbController {
                 .getLastPublishedSnapshotOffset(topicDescriptor);
 
         if (partitionOffset == null) {
-            partitionOffset =new PartitionOffset(0, 0);
+            partitionOffset = new PartitionOffset(0, 0);
         }
 
         return partitionOffset;

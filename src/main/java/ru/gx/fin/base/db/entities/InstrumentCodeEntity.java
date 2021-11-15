@@ -36,7 +36,7 @@ public class InstrumentCodeEntity extends AbstractDataObject {
      * Порядковый номер кода (для случаев, когда провайдер о данном инструменте транслирует несколько кодов)
      */
     @Id
-    @Column(name = "Index", nullable = true)
+    @Column(name = "Index", nullable = false)
     private short index;
 
     @Column(name = "Code", length = 50, nullable = false)
@@ -45,7 +45,7 @@ public class InstrumentCodeEntity extends AbstractDataObject {
     /**
      * Название инструмента на данном провайдере
      */
-    @Column(name = "Name", length = 250, nullable = true)
+    @Column(name = "Name", length = 250)
     private String name;
 
     /**
@@ -57,7 +57,7 @@ public class InstrumentCodeEntity extends AbstractDataObject {
     /**
      * Дата, до (не включая) которой данный код действовал
      */
-    @Column(name = "DateTo", nullable = true)
+    @Column(name = "DateTo")
     private LocalDate dateTo;
 
 }

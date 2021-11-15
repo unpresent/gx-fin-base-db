@@ -348,42 +348,49 @@ public abstract class CommonConfig implements IncomeTopicsConfigurator, OutcomeT
                 .setDataObjectClass(Place.class)
                 .setDataPackageClass(PlacesPackage.class)
                 .setMemoryRepository(this.placesMemoryRepository)
+                .setPriority(0)
                 .init();
         configuration
                 .newDescriptor(settings.getOutcomeTopicProviderTypes(), StandardOutcomeTopicUploadingDescriptor.class)
                 .setDataObjectClass(ProviderType.class)
                 .setDataPackageClass(ProviderTypesPackage.class)
                 .setMemoryRepository(this.providerTypesMemoryRepository)
+                .setPriority(1)
                 .init();
         configuration
                 .newDescriptor(settings.getOutcomeTopicProviders(), StandardOutcomeTopicUploadingDescriptor.class)
                 .setDataObjectClass(Provider.class)
                 .setDataPackageClass(ProvidersPackage.class)
                 .setMemoryRepository(this.providersMemoryRepository)
+                .setPriority(2)
                 .init();
         configuration
                 .newDescriptor(settings.getOutcomeTopicInstrumentTypes(), StandardOutcomeTopicUploadingDescriptor.class)
                 .setDataObjectClass(InstrumentType.class)
                 .setDataPackageClass(InstrumentTypesPackage.class)
                 .setMemoryRepository(this.instrumentTypesMemoryRepository)
+                .setPriority(4)
                 .init();
         configuration
                 .newDescriptor(settings.getOutcomeTopicCurrencies(), StandardOutcomeTopicUploadingDescriptor.class)
                 .setDataObjectClass(Currency.class)
                 .setDataPackageClass(CurrenciesPackage.class)
                 .setMemoryRepository(this.currenciesMemoryRepository)
+                .setPriority(5)
                 .init();
         configuration
                 .newDescriptor(settings.getOutcomeTopicSecurities(), StandardOutcomeTopicUploadingDescriptor.class)
                 .setDataObjectClass(Security.class)
                 .setDataPackageClass(SecuritiesPackage.class)
                 .setMemoryRepository(this.securitiesMemoryRepository)
+                .setPriority(6)
                 .init();
         configuration
                 .newDescriptor(settings.getIncomeTopicDerivatives(), StandardOutcomeTopicUploadingDescriptor.class)
                 .setDataObjectClass(Derivative.class)
                 .setDataPackageClass(DerivativesPackage.class)
                 .setMemoryRepository(this.derivativesMemoryRepository)
+                .setPriority(7)
                 .init();
     }
 
